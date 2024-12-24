@@ -3,7 +3,7 @@
 #include <stdio.h>
 #define MAP_SIZE 4  // Tamaño del mapa (ajustar según la resolución y entorno)
 //const int MAP_SIZE = MAP_SIZE_one;
-const float CELDA = 10;  // Tamaño de la celda en centimetros (ejm 20cm*20cm) (ajustar según el tamaño del robot)
+const float CELDA = 15;  // Tamaño de la celda en centimetros (ejm 20cm*20cm) (ajustar según el tamaño del robot)
 char mapa[MAP_SIZE][MAP_SIZE];  // Matriz del mapa de ocupación
 int robotX, robotY;            // Posición actual del robot en el mapa
 int inicioX, inicioY;          // Posición inicial (punto de origen)
@@ -16,10 +16,10 @@ int objetoX, objetoY; // Posición del objeto negro (B)
 "R": Posición actual de un robot
 "B": Objeto negro encontrado 
 
-[-1, -1,  0,  0]
-[-1, -1,  0,  1]
-[-1,  B,  0,  0]
-[-1,  R,  0,  0]
+[-,  -,  0,  0]
+[-,  -,  0,  1]
+[-,  B,  0,  0]
+[-,  R,  0,  0]
 */
 
 //Ultrasonic Sensor
@@ -67,6 +67,9 @@ float velY = 0;
 float posX = 0;
 float posY = 0;
 
+// Calibration offsets
+float accelOffsetX = 0, accelOffsetY = 0, accelOffsetZ = 0;
+
 //Motors
 #include <AFMotor.h>
 AF_DCMotor motori(1); //Left motor - connected to terminal 1
@@ -101,6 +104,9 @@ void setup() {
   mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
 
   lastTime = millis();
+
+  // Perform calibration
+  calibrateSensor();
 
 
 
@@ -189,14 +195,15 @@ void unaCelda(){ // Moverse una sola celda hacia adelante
   motori.run(RELEASE);
   motord.run(RELEASE);
   delay(200);
-  
+  velX = 0; // Reset velocity X
+  velY = 0; // Reset velocity Y
   posX = 0; // Reiniciar distancia acumulada en X
   posY = 0; // Reiniciar distancia acumulada en X
   lastTime = millis(); // Reset the time
 
   while (posX <= CELDA){ // Avanzar hasta que haya pasado a la siguiente celda
-    motori.run(FORWARD);
-    motord.run(FORWARD);
+    motori.run(BACKWARD); // adelante
+    motord.run(BACKWARD);
     delay(5);
 
     updateAccel();
@@ -216,8 +223,8 @@ void unaCelda(){ // Moverse una sola celda hacia adelante
 }
 
 void go(){
-  motori.run(FORWARD);
-  motord.run(FORWARD);
+  motori.run(BACKWARD);
+  motord.run(BACKWARD);
   delay(5); 
 }
 
@@ -236,8 +243,8 @@ void uturn(){ // With the gyroscope measure a 180-degree turn
   lastTime = millis(); // Reset the time
 
   while (angle < targetAngle){ // Turn until the target angle is reached
-    motori.run(BACKWARD);
-    motord.run(FORWARD);
+    motord.run(FORWARD); //retrocede
+    motori.run(BACKWARD); // avanza
     delay(5);
 
     updateGyro();
@@ -262,8 +269,8 @@ void right(){ // -90° Using the gyroscope
   lastTime = millis(); // Reset the time
 
   while (angle < targetAngle){ // Turn until the target angle is reached
-    motori.run(FORWARD);
     motord.run(BACKWARD);
+    motori.run(FORWARD);
     delay(5);
 
     updateGyro();
@@ -289,8 +296,8 @@ void left(){ //All bifurcations will be at 90° - Using the gyroscope
   lastTime = millis(); // Reset the time
 
   while (angle < targetAngle){ // Turn until the target angle is reached
-    motori.run(BACKWARD);
     motord.run(FORWARD);
+    motori.run(BACKWARD);
     delay(5);
 
     updateGyro();
@@ -316,6 +323,7 @@ void updateGyro() {
 
   float gyroZ = g.gyro.z * (180 / PI); // rad/s a deg/s
   angle += gyroZ * deltaTime;
+  Serial.println(angle);
 }
 
 // Función para actualizar la aceleración y calcular la distancia
@@ -330,8 +338,14 @@ void updateAccel() {
   lastTime = currentTime;
 
   // Leer la aceleración en los ejes X e Y (m/s^2)
-  float accelX = a.acceleration.x * (100);  // Aceleración en el eje X * (m/s^2  a cm/s^2  1m = 100cm)
-  float accelY = a.acceleration.y * (100);  // Aceleración en el eje Y * (m/s^2  a cm/s^2)
+  // float accelX = a.acceleration.x * (100);  // Aceleración en el eje X * (m/s^2  a cm/s^2  1m = 100cm)
+  // float accelY = a.acceleration.y * (100);  // Aceleración en el eje Y * (m/s^2  a cm/s^2)
+
+  // Apply calibration offsets
+  float accelX = (a.acceleration.x * 100) - accelOffsetX;
+  float accelY = (a.acceleration.y * 100) - accelOffsetY;
+  float accelZ = (a.acceleration.z * 100) - accelOffsetZ;
+
 
   // Actualizar la velocidad en cada eje (v = v0 + a * t)
   velX += accelX * deltaTime; //cm/s
@@ -515,8 +529,8 @@ void Examinar() {
   
   // Regresar lo que avanzo para acercarse
   while (distance < distanceInicial ) {  // Retrocede hasta que vuelva a la posición inicial
-    motori.run(BACKWARD);
-    motord.run(BACKWARD);
+    motori.run(FORWARD);
+    motord.run(FORWARD);
     delay(5);
     medirDistancia();
   }
@@ -564,6 +578,62 @@ void busquedaZigZag() {
 
 }
 
+void navigateAroundObstacle() {
+  Serial.println("Evitando obstáculo...");
+
+  // Girar a la izquierda
+  left();
+  medirDistancia();
+
+  // Intentar avanzar si el camino está despejado
+  if (distance > CELDA) {
+    unaCelda();
+    return;
+  }
+
+  // Si no puede avanzar, girar hacia el otro lado
+  right();
+  right();  // Esto sería un giro de 180 grados
+  medirDistancia();
+
+  if (distance > CELDA) {
+    unaCelda();
+    return;
+  }
+
+  // Si no hay opciones, regresar a la posición inicial
+  Serial.println("No hay salida, regresando...");
+  uturn();
+}
+
+void calibrateSensor() {
+  Serial.println("Calibrating sensor. Keep it stationary...");
+  float sumX = 0, sumY = 0, sumZ = 0;
+  int numSamples = 100;
+
+  for (int i = 0; i < numSamples; i++) {
+    sensors_event_t a, g, temp;
+    mpu.getEvent(&a, &g, &temp);
+
+    sumX += a.acceleration.x * 100; // Convert to cm/s²
+    sumY += a.acceleration.y * 100;
+    sumZ += a.acceleration.z * 100;
+
+    delay(50);
+  }
+
+  accelOffsetX = sumX / numSamples;
+  accelOffsetY = sumY / numSamples;
+  accelOffsetZ = sumZ / numSamples;
+
+  Serial.println("Calibration complete.");
+  Serial.print("Offsets - X: ");
+  Serial.print(accelOffsetX);
+  Serial.print(", Y: ");
+  Serial.print(accelOffsetY);
+  Serial.print(", Z: ");
+  Serial.println(accelOffsetZ);
+}
 
 
 
