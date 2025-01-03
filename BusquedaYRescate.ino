@@ -3,7 +3,7 @@
 #include <stdio.h>
 #define MAP_SIZE 4  // Tamaño del mapa (ajustar según la resolución y entorno)
 //const int MAP_SIZE = MAP_SIZE_one;
-const float CELDA = 15;  // Tamaño de la celda en centimetros (ejm 20cm*20cm) (ajustar según el tamaño del robot)
+const float CELDA = 15;  // = (Tamaño/2) Tamaño de la celda en centimetros (ejm 20cm*20cm) (ajustar según el tamaño del robot)
 char mapa[MAP_SIZE][MAP_SIZE];  // Matriz del mapa de ocupación
 int robotX, robotY;            // Posición actual del robot en el mapa
 int inicioX, inicioY;          // Posición inicial (punto de origen)
@@ -69,6 +69,12 @@ float posY = 0;
 
 // Calibration offsets
 float accelOffsetX = 0, accelOffsetY = 0, accelOffsetZ = 0;
+float gyroOffsetX = 0, gyroOffsetY = 0, gyroOffsetZ = 0 ;
+
+// Moving Average Filter
+#define FILTER_SIZE 5  // Número de muestras para el promedio
+float gyroBuffer[FILTER_SIZE]; // Buffer circular para lecturas
+int bufferIndex = 0;           // Índice actual en el buffer
 
 //Motors
 #include <AFMotor.h>
@@ -312,6 +318,21 @@ void left(){ //All bifurcations will be at 90° - Using the gyroscope
   stop();
 }
 
+// Filtro Promedio Móvil (Moving Average Filter) (Reducir el ruido del giroscopio)
+float filterMovingAverage(float rawGyro) {
+  // Agrega la nueva lectura al buffer
+  gyroBuffer[bufferIndex] = rawGyro;
+  bufferIndex = (bufferIndex + 1) % FILTER_SIZE; // Avanza el índice circular
+
+  // Calcula el promedio de los valores en el buffer
+  float sum = 0;
+  for (int i = 0; i < FILTER_SIZE; i++) {
+    sum += gyroBuffer[i];
+  }
+  return sum / FILTER_SIZE; // Retorna el promedio
+}
+
+
 // Función para actualizar la aceleración angular y calcular el angulo
 void updateGyro() {
   sensors_event_t a, g, temp;
@@ -321,9 +342,17 @@ void updateGyro() {
   deltaTime = (currentTime - lastTime) / 1000.0;
   lastTime = currentTime;
 
-  float gyroZ = g.gyro.z * (180 / PI); // rad/s a deg/s
+  float gyroZ = (g.gyro.z - gyroOffsetZ) * (180 / PI); // rad/s a deg/s
   angle += gyroZ * deltaTime;
+  Serial.print("Angulo sin filtro:");
   Serial.println(angle);
+
+  float filteredGyroZ = filterMovingAverage(gyroZ);
+  // Actualizar ángulo usando la señal filtrada
+  angle += filteredGyroZ * deltaTime;
+  Serial.print("Angulo con filtro:");
+  Serial.println(angle);
+
 }
 
 // Función para actualizar la aceleración y calcular la distancia
@@ -546,6 +575,8 @@ void busquedaZigZag() {
     if (distance > CELDA){
       unaCelda();
       left();
+      if (distance > CELDA){
+        unaCelda();}
     }
     else if (distance <= CELDA){
       stop();
@@ -553,11 +584,13 @@ void busquedaZigZag() {
       Examinar();
     }
   }
-  else if((robotX == 0) && (orientacion == 2)){
+  if(robotX == 0){
     right();
     if (distance > CELDA){
       unaCelda();
       right();
+      if (distance > CELDA){
+        unaCelda();}
     }
     else if (distance <= CELDA){
       stop();
@@ -608,25 +641,41 @@ void navigateAroundObstacle() {
 
 void calibrateSensor() {
   Serial.println("Calibrating sensor. Keep it stationary...");
+  float sumGyroX = 0, sumGyroY = 0, sumGyroZ = 0;
   float sumX = 0, sumY = 0, sumZ = 0;
-  int numSamples = 100;
+  int numSamples = 200;
 
   for (int i = 0; i < numSamples; i++) {
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
 
+    // sumGyroX += g.gyro.x;
+    // sumGyroY += g.gyro.y;
+    // sumGyroZ += g.gyro.z;
+
     sumX += a.acceleration.x * 100; // Convert to cm/s²
     sumY += a.acceleration.y * 100;
     sumZ += a.acceleration.z * 100;
 
-    delay(50);
+    delay(20);
   }
 
-  accelOffsetX = sumX / numSamples;
-  accelOffsetY = sumY / numSamples;
-  accelOffsetZ = sumZ / numSamples;
+  // float gyroOffsetX = sumGyroX / numSamples;
+  // float gyroOffsetY = sumGyroY / numSamples;
+  // float gyroOffsetZ = sumGyroZ / numSamples;
+
+  accelOffsetX = (sumX / numSamples);
+  accelOffsetY = (sumY / numSamples);
+  accelOffsetZ = (sumZ / numSamples)*100;
 
   Serial.println("Calibration complete.");
+  Serial.print("Gyro offsets: X=");
+  Serial.print(gyroOffsetX);
+  Serial.print(", Y=");
+  Serial.print(gyroOffsetY);
+  Serial.print(", Z=");
+  Serial.println(gyroOffsetZ);
+
   Serial.print("Offsets - X: ");
   Serial.print(accelOffsetX);
   Serial.print(", Y: ");
@@ -634,6 +683,5 @@ void calibrateSensor() {
   Serial.print(", Z: ");
   Serial.println(accelOffsetZ);
 }
-
 
 
