@@ -302,7 +302,7 @@ void right(){ // -90° Using the gyroscope
   targetAngle = -90; // Set the target angle
   lastTime = millis(); // Reset the time
 
-  while (angle < targetAngle){ // Turn until the target angle is reached
+  while (angle > targetAngle){ // Turn until the target angle is reached
     motord.run(BACKWARD);
     motori.run(FORWARD);
     delay(5);
@@ -313,7 +313,7 @@ void right(){ // -90° Using the gyroscope
   delay(100);
 
   // Actualizar la orientación acumulada
-  Serial.print("menos 90");
+  Serial.println("menos 90");
   orientacionActual -= 90;  // Restar 90 grados al ángulo actual
 
   // stop the motors
