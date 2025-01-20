@@ -1,4 +1,4 @@
-//Busqueda y Rescate 
+//Busqueda y Rescate
 #include <math.h>
 #include <stdio.h>
 #define MAP_SIZE 4  // Tamaño del mapa (ajustar según la resolución y entorno)
@@ -8,6 +8,7 @@ char mapa[MAP_SIZE][MAP_SIZE];  // Matriz del mapa de ocupación
 int robotX, robotY;            // Posición actual del robot en el mapa
 int inicioX, inicioY;          // Posición inicial (punto de origen)
 int objetoX, objetoY; // Posición del objeto blanco (B)
+int avanzo;
 
 /* Ejemplo de la Matriz
  1 : ocupado (obstáculo)
@@ -89,6 +90,21 @@ int validValues = 0;           // Contador de valores válidos
 AF_DCMotor motori(1); //Left motor - connected to terminal 1
 AF_DCMotor motord(2); //Right motor - connected to terminal 2
 
+//Nodo Para A* 
+struct Nodo {
+    int x, y;        // Coordenadas en el mapa
+    float costoG;    // Costo acumulado desde el inicio
+    float costoH;    // Heurística estimada al objetivo
+    float costoF;    // Costo total (G + H)
+    Nodo* padre;     // Nodo previo en el camino
+};
+
+// Define a global array to store the path coordinates
+const int MAX_PATH_LENGTH = MAP_SIZE * MAP_SIZE;
+int path[MAX_PATH_LENGTH][2];
+int pathLength = 0;
+int objetivoX, objetivoY; // Posición del objetivo para A*
+
 void setup() {
   Serial.begin(9600);
 
@@ -98,6 +114,7 @@ void setup() {
   robotX = inicioX;
   robotY = inicioY;
   inicializarMapa();
+  avanzo = 0;
 
   //Ultrasonic Sensor
   pinMode(Trigger, OUTPUT); // Set trigger pin as an Output
@@ -209,6 +226,7 @@ void unaCelda(){ // Moverse una sola celda hacia adelante
   motori.run(RELEASE);
   motord.run(RELEASE);
   delay(200);
+  avanzo = 1;
   velX = 0; // Reset velocity X
   velY = 0; // Reset velocity Y
   posX = 0; // Reiniciar distancia acumulada en X
@@ -219,6 +237,8 @@ void unaCelda(){ // Moverse una sola celda hacia adelante
     motori.run(BACKWARD); // adelante
     motord.run(BACKWARD);
     delay(5);
+
+    Serial.println(posX);
 
     updateAccel();
   }
@@ -394,8 +414,8 @@ void updateAccel() {
   // float accelY = a.acceleration.y * (100);  // Aceleración en el eje Y * (m/s^2  a cm/s^2)
 
   // Apply calibration offsets
-  float accelX = (a.acceleration.x * 100) - accelOffsetX;
-  float accelY = (a.acceleration.y * 100) - accelOffsetY;
+  float accelX = (a.acceleration.x * 100);// - accelOffsetX;
+  float accelY = (a.acceleration.y * 100);// - accelOffsetY
   float accelZ = (a.acceleration.z * 100) - accelOffsetZ;
 
 
@@ -584,6 +604,54 @@ void Examinar() {
             // TODO: Loop para ir revisando y reajustando el mapa mientras sigue el mapa dado por AEstrella
             // TODO: condiciones para controlar el movimiento segun las coordenadas
 
+            //Revisar
+            for (int i = pathLength - 1; i >= 0; i--) {
+              int nextX = path[i][0];
+              int nextY = path[i][1];
+
+              // Move to the next cell
+              while (robotX != nextX || robotY != nextY) {
+                medirDistancia();
+                if (distance <= CELDA) {
+                  Serial.println("Encontro un obstaculo en el camino");
+                  actualizarPosObjeto('1'); // Marca un obstáculo en la matriz
+                  AEstrella(robotX, robotY, objetivoX, objetivoY); // Recalcular el camino
+                  break; // Salir del bucle para recalcular el camino
+                }
+
+                if (robotX < nextX) {
+                  if (orientacion != 0) {
+                    while (orientacion != 0) {
+                      right();
+                    }
+                  }
+                  unaCelda();
+                } else if (robotX > nextX) {
+                  if (orientacion != 2) {
+                    while (orientacion != 2) {
+                      right();
+                    }
+                  }
+                  unaCelda();
+                } else if (robotY < nextY) {
+                  if (orientacion != 1) {
+                    while (orientacion != 1) {
+                      right();
+                    }
+                  }
+                  unaCelda();
+                } else if (robotY > nextY) {
+                  if (orientacion != 3) {
+                    while (orientacion != 3) {
+                      right();
+                    }
+                  }
+                  unaCelda();
+                }
+              }
+            }
+
+            // Hasta aqui 
             left();
         }
         if (orientacion==1){
@@ -655,7 +723,7 @@ void busquedaZigZag() {
       Examinar();
     }
   }
-  if(robotX == 0){
+  else if(robotX == 0 && avanzo == 1){
     right();
     if (distance > CELDA){
       unaCelda();
@@ -728,13 +796,6 @@ void calibrateSensor(){
   Serial.println(accelOffsetZ);
 }
 
-struct Nodo {
-    int x, y;        // Coordenadas en el mapa
-    float costoG;    // Costo acumulado desde el inicio
-    float costoH;    // Heurística estimada al objetivo
-    float costoF;    // Costo total (G + H)
-    Nodo* padre;     // Nodo previo en el camino
-};
 
 bool esValido(int x, int y) {
     return x >= 0 && x < MAP_SIZE && y >= 0 && y < MAP_SIZE && mapa[x][y] != '1';
@@ -758,10 +819,7 @@ void obtenerVecinos(int x, int y, int vecinos[][2], int& count) {
     }
 }
 
-// Define a global array to store the path coordinates
-const int MAX_PATH_LENGTH = MAP_SIZE * MAP_SIZE;
-int path[MAX_PATH_LENGTH][2];
-int pathLength = 0;
+
 
 // Function to store the path coordinates in an array
 void almacenarInstrucciones(Nodo* objetivo) {

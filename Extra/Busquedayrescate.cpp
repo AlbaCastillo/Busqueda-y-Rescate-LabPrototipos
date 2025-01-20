@@ -584,6 +584,54 @@ void Examinar() {
             // TODO: Loop para ir revisando y reajustando el mapa mientras sigue el mapa dado por AEstrella
             // TODO: condiciones para controlar el movimiento segun las coordenadas
 
+            //Revisar
+            for (int i = pathLength - 1; i >= 0; i--) {
+              int nextX = path[i][0];
+              int nextY = path[i][1];
+
+              // Move to the next cell
+              while (robotX != nextX || robotY != nextY) {
+                medirDistancia();
+                if (distance <= CELDA) {
+                  Serial.println("Encontro un obstaculo en el camino");
+                  actualizarPosObjeto('1'); // Marca un obstáculo en la matriz
+                  AEstrella(robotX, robotY, objetivoX, objetivoY); // Recalcular el camino
+                  break; // Salir del bucle para recalcular el camino
+                }
+
+                if (robotX < nextX) {
+                  if (orientacion != 0) {
+                    while (orientacion != 0) {
+                      right();
+                    }
+                  }
+                  unaCelda();
+                } else if (robotX > nextX) {
+                  if (orientacion != 2) {
+                    while (orientacion != 2) {
+                      right();
+                    }
+                  }
+                  unaCelda();
+                } else if (robotY < nextY) {
+                  if (orientacion != 1) {
+                    while (orientacion != 1) {
+                      right();
+                    }
+                  }
+                  unaCelda();
+                } else if (robotY > nextY) {
+                  if (orientacion != 3) {
+                    while (orientacion != 3) {
+                      right();
+                    }
+                  }
+                  unaCelda();
+                }
+              }
+            }
+
+            // Hasta aqui 
             left();
         }
         if (orientacion==1){
