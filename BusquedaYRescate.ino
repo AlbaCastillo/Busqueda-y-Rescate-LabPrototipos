@@ -591,18 +591,28 @@ void Examinar() {
   
   if (sensorValues[0] < 800 || sensorValues[1] < 800) {
     Serial.println("Objeto Blanco detectado."); 
-    actualizarPosObjeto('B'); // Marca el objeto blanco en la matriz  
+  
+    Serial.print("Free Memory: ");
+    Serial.println(freeMemory());
+
+    actualizarPosObjeto('1'); // Marca el objeto blanco en la matriz  Deberia ser ('B')
+
     if ((robotY % 2) == 0) {
         // Acción para columnas pares (Robot dandole la espalda a la meta - debe cambiar de posicion)
-        Serial.println("Columna par");
+        Serial.println("Columna par Blanco");
         // Moverse dos celdas en la direccion hacia donde esta mirando y girar 90 grados a la izquierda
         // 0: Norte, 1: Este, 2: Sur, 3: Oeste  
         if (orientacion==0){
             objetivoX = robotX + 2;
             objetivoY = robotY;
+
+            Serial.print("Free Memory: ");
+            Serial.println(freeMemory());
+
             AEstrella(robotX, robotY, objetivoX, objetivoY);
             // TODO: Loop para ir revisando y reajustando el mapa mientras sigue el mapa dado por AEstrella
             // TODO: condiciones para controlar el movimiento segun las coordenadas
+
 
             //Revisar
             for (int i = pathLength - 1; i >= 0; i--) {
@@ -662,7 +672,7 @@ void Examinar() {
         }
     } else {
         // Acción para columnas impares (Robot de frente a la meta - solo debe avanzar)
-        Serial.println("Columna impar");
+        Serial.println("Columna impar Blanco");
         // Empujar hasta llegar a la coordenda x = 0  o  y = 0
         if (orientacion==2){
             objetivoX = 0;
@@ -687,6 +697,7 @@ void Examinar() {
     if ((robotY % 2) == 0) {
         // Acción para columnas pares (Rodear obstaculo)
         Serial.println("Columna par");
+        //TODO completar codigo
 
     } else {
         // Acción para columnas impares (Rodear obstaculo)
@@ -834,6 +845,10 @@ void almacenarInstrucciones(Nodo* objetivo) {
 }
 
 void AEstrella(int inicioX, int inicioY, int objetivoX, int objetivoY) {
+
+    Serial.println("A*");
+    Serial.print("Free Memory: ");
+    Serial.println(freeMemory());
     // Inicializar estructuras
     Nodo* abierta[MAP_SIZE * MAP_SIZE];  // Abierta
     bool cerrada[MAP_SIZE][MAP_SIZE] = {false};  // Cerrada
@@ -844,12 +859,17 @@ void AEstrella(int inicioX, int inicioY, int objetivoX, int objetivoY) {
     inicial->costoF = inicial->costoG + inicial->costoH;
     abierta[abiertaCount++] = inicial;
 
+    Serial.print("Free Memory: ");
+    Serial.println(freeMemory());
+
     while (abiertaCount > 0) {
         // Encontrar el nodo con el menor costoF
         int minIndex = 0;
         for (int i = 1; i < abiertaCount; ++i) {
             if (abierta[i]->costoF < abierta[minIndex]->costoF) {
                 minIndex = i;
+                Serial.print("Encontrar nodo - Free Memory: ");
+                Serial.println(freeMemory());
             }
         }
         Nodo* actual = abierta[minIndex];
@@ -880,6 +900,8 @@ void AEstrella(int inicioX, int inicioY, int objetivoX, int objetivoY) {
         for (int i = 0; i < vecinosCount; ++i) {
             int nx = vecinos[i][0];
             int ny = vecinos[i][1];
+            Serial.print("Costos - Free Memory: ");
+            Serial.println(freeMemory());
 
             if (cerrada[nx][ny]) continue;
 
@@ -895,4 +917,11 @@ void AEstrella(int inicioX, int inicioY, int objetivoX, int objetivoY) {
         }
     }
     Serial.println("No se encontró un camino.");
+}
+
+extern int __heap_start, *__brkval;
+
+int freeMemory() {
+    int v;
+    return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
 }
