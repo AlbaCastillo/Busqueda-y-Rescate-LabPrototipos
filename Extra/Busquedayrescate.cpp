@@ -92,11 +92,11 @@ AF_DCMotor motord(2); //Right motor - connected to terminal 2
 
 //Nodo Para A* 
 struct Nodo {
-    int x, y;        // Coordenadas en el mapa
-    float costoG;    // Costo acumulado desde el inicio
-    float costoH;    // Heurística estimada al objetivo
-    float costoF;    // Costo total (G + H)
-    Nodo* padre;     // Nodo previo en el camino
+    uint8_t x, y;
+    uint8_t costoG;
+    uint8_t costoH;
+    uint8_t costoF;
+    Nodo* padre;
 };
 
 // Define a global array to store the path coordinates
@@ -107,6 +107,8 @@ int objetivoX, objetivoY; // Posición del objetivo para A*
 
 void setup() {
   Serial.begin(9600);
+  Serial.print("Free Memory: ");
+  Serial.println(freeMemory());
 
   // Matriz - Mapa
   inicioX = 0;
@@ -591,20 +593,30 @@ void Examinar() {
   
   if (sensorValues[0] < 800 || sensorValues[1] < 800) {
     Serial.println("Objeto Blanco detectado."); 
-    actualizarPosObjeto('B'); // Marca el objeto blanco en la matriz  
+  
+    Serial.print("Free Memory: ");
+    Serial.println(freeMemory());
+
+    actualizarPosObjeto('1'); // Marca el objeto blanco en la matriz  Deberia ser ('B')
+
     if ((robotY % 2) == 0) {
         // Acción para columnas pares (Robot dandole la espalda a la meta - debe cambiar de posicion)
-        Serial.println("Columna par");
+        Serial.println("Columna par Blanco");
         // Moverse dos celdas en la direccion hacia donde esta mirando y girar 90 grados a la izquierda
         // 0: Norte, 1: Este, 2: Sur, 3: Oeste  
         if (orientacion==0){
             objetivoX = robotX + 2;
             objetivoY = robotY;
+
+            Serial.print("Free Memory: ");
+            Serial.println(freeMemory());
+
             AEstrella(robotX, robotY, objetivoX, objetivoY);
             // TODO: Loop para ir revisando y reajustando el mapa mientras sigue el mapa dado por AEstrella
             // TODO: condiciones para controlar el movimiento segun las coordenadas
 
-            //Revisar
+
+            //TODO: Revisar
             for (int i = pathLength - 1; i >= 0; i--) {
               int nextX = path[i][0];
               int nextY = path[i][1];
@@ -612,14 +624,9 @@ void Examinar() {
               // Move to the next cell
               while (robotX != nextX || robotY != nextY) {
                 medirDistancia();
-                if (distance <= CELDA) {
-                  Serial.println("Encontro un obstaculo en el camino");
-                  actualizarPosObjeto('1'); // Marca un obstáculo en la matriz
-                  AEstrella(robotX, robotY, objetivoX, objetivoY); // Recalcular el camino
-                  break; // Salir del bucle para recalcular el camino
-                }
 
                 if (robotX < nextX) {
+                  Serial.println(orientacion);
                   if (orientacion != 0) {
                     while (orientacion != 0) {
                       right();
@@ -627,6 +634,7 @@ void Examinar() {
                   }
                   unaCelda();
                 } else if (robotX > nextX) {
+                  Serial.println(orientacion);
                   if (orientacion != 2) {
                     while (orientacion != 2) {
                       right();
@@ -634,6 +642,7 @@ void Examinar() {
                   }
                   unaCelda();
                 } else if (robotY < nextY) {
+                  Serial.println(orientacion);
                   if (orientacion != 1) {
                     while (orientacion != 1) {
                       right();
@@ -641,6 +650,7 @@ void Examinar() {
                   }
                   unaCelda();
                 } else if (robotY > nextY) {
+                  Serial.println(orientacion);
                   if (orientacion != 3) {
                     while (orientacion != 3) {
                       right();
@@ -649,20 +659,27 @@ void Examinar() {
                   unaCelda();
                 }
               }
+                if (distance <= CELDA) {
+                  Serial.println("Encontro un obstaculo en el camino");
+                  actualizarPosObjeto('1'); // Marca un obstáculo en la matriz
+                  AEstrella(robotX, robotY, objetivoX, objetivoY); // Recalcular el camino
+                  break; // Salir del bucle para recalcular el camino
+                }
             }
 
             // Hasta aqui 
+            Serial.println("Salio del for");
             left();
         }
         if (orientacion==1){
             objetivoX = robotX;
-            objetivoY = robotY+2;
+            objetivoY = robotY + 2;
             AEstrella(robotX, robotY, objetivoX, objetivoY);
             left();
         }
     } else {
         // Acción para columnas impares (Robot de frente a la meta - solo debe avanzar)
-        Serial.println("Columna impar");
+        Serial.println("Columna impar Blanco");
         // Empujar hasta llegar a la coordenda x = 0  o  y = 0
         if (orientacion==2){
             objetivoX = 0;
@@ -687,6 +704,7 @@ void Examinar() {
     if ((robotY % 2) == 0) {
         // Acción para columnas pares (Rodear obstaculo)
         Serial.println("Columna par");
+        //TODO completar codigo
 
     } else {
         // Acción para columnas impares (Rodear obstaculo)
@@ -797,102 +815,108 @@ void calibrateSensor(){
 }
 
 
-bool esValido(int x, int y) {
-    return x >= 0 && x < MAP_SIZE && y >= 0 && y < MAP_SIZE && mapa[x][y] != '1';
+// Heurística en entero
+uint8_t heuristica(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2) {
+  return abs(x1 - x2) + abs(y1 - y2); // sin flotantes
 }
 
-float heuristica(int x1, int y1, int x2, int y2) {
-    // Distancia de Manhattan
-    return abs(x1 - x2) + abs(y1 - y2);
+bool esValido(uint8_t x, uint8_t y) {
+  return (x < MAP_SIZE && y < MAP_SIZE && mapa[x][y] != '1');
 }
 
-void obtenerVecinos(int x, int y, int vecinos[][2], int& count) {
-    // Movimientos posibles: arriba, abajo, izquierda, derecha
-    int posiblesVecinos[4][2] = {{x - 1, y}, {x + 1, y}, {x, y - 1}, {x, y + 1}};
-    count = 0;
-    for (int i = 0; i < 4; ++i) {
-        if (esValido(posiblesVecinos[i][0], posiblesVecinos[i][1])) {
-            vecinos[count][0] = posiblesVecinos[i][0];
-            vecinos[count][1] = posiblesVecinos[i][1];
-            ++count;
-        }
+void obtenerVecinos(uint8_t x, uint8_t y, uint8_t vecinos[][2], uint8_t &count) {
+  uint8_t posibles[4][2] = {{x-1,y},{x+1,y},{x,y-1},{x,y+1}};
+  count = 0;
+  for (int i = 0; i < 4; i++) {
+    uint8_t nx = posibles[i][0];
+    uint8_t ny = posibles[i][1];
+    if (nx < MAP_SIZE && ny < MAP_SIZE && mapa[nx][ny] != '1') {
+      vecinos[count][0] = nx;
+      vecinos[count][1] = ny;
+      count++;
     }
+  }
 }
 
-
-
-// Function to store the path coordinates in an array
 void almacenarInstrucciones(Nodo* objetivo) {
-    Nodo* nodo = objetivo;
-    pathLength = 0;
-    while (nodo != nullptr && pathLength < MAX_PATH_LENGTH) {
-        path[pathLength][0] = nodo->x;
-        path[pathLength][1] = nodo->y;
-        pathLength++;
-        nodo = nodo->padre;
-    }
+  pathLength = 0;
+  Nodo* nodo = objetivo;
+  while (nodo && pathLength < MAX_PATH_LENGTH) {
+    path[pathLength][0] = nodo->x;
+    path[pathLength][1] = nodo->y;
+    pathLength++;
+    nodo = nodo->padre;
+  }
 }
 
 void AEstrella(int inicioX, int inicioY, int objetivoX, int objetivoY) {
-    // Inicializar estructuras
-    Nodo* abierta[MAP_SIZE * MAP_SIZE];  // Abierta
-    bool cerrada[MAP_SIZE][MAP_SIZE] = {false};  // Cerrada
-    int abiertaCount = 0;
+  Serial.println("A* Iniciando");
 
-    // Nodo inicial
-    Nodo* inicial = new Nodo{inicioX, inicioY, 0, heuristica(inicioX, inicioY, objetivoX, objetivoY), 0, nullptr};
-    inicial->costoF = inicial->costoG + inicial->costoH;
-    abierta[abiertaCount++] = inicial;
+  Nodo* abierta[MAP_SIZE * MAP_SIZE];
+  bool cerrada[MAP_SIZE][MAP_SIZE] = {false};
+  uint8_t abiertaCount = 0;
 
-    while (abiertaCount > 0) {
-        // Encontrar el nodo con el menor costoF
-        int minIndex = 0;
-        for (int i = 1; i < abiertaCount; ++i) {
-            if (abierta[i]->costoF < abierta[minIndex]->costoF) {
-                minIndex = i;
-            }
-        }
-        Nodo* actual = abierta[minIndex];
-        abierta[minIndex] = abierta[--abiertaCount];
+  Nodo* inicial = new Nodo{
+    (uint8_t)inicioX, (uint8_t)inicioY, 
+    0, 
+    heuristica(inicioX, inicioY, objetivoX, objetivoY),
+    0,
+    nullptr
+  };
+  inicial->costoF = inicial->costoG + inicial->costoH;
+  abierta[abiertaCount++] = inicial;
 
-        // Si llegamos al objetivo
-        if (actual->x == objetivoX && actual->y == objetivoY) {
-            Serial.println("Camino encontrado:");
-            almacenarInstrucciones(actual);  // Call the function to store the path coordinates
-            for (int i = pathLength - 1; i >= 0; i--) {
-                Serial.print("(");
-                Serial.print(path[i][0]);
-                Serial.print(", ");
-                Serial.print(path[i][1]);
-                Serial.print(") ");
-            }
-            Serial.println();
-            return;
-        }
-
-        // Marcar el nodo actual como cerrado
-        cerrada[actual->x][actual->y] = true;
-
-        // Obtener vecinos
-        int vecinos[4][2];
-        int vecinosCount;
-        obtenerVecinos(actual->x, actual->y, vecinos, vecinosCount);
-        for (int i = 0; i < vecinosCount; ++i) {
-            int nx = vecinos[i][0];
-            int ny = vecinos[i][1];
-
-            if (cerrada[nx][ny]) continue;
-
-            float nuevoCostoG = actual->costoG + 1;  // Costo de moverse a la celda vecina (puede ajustarse)
-            float nuevoCostoH = heuristica(nx, ny, objetivoX, objetivoY);
-            float nuevoCostoF = nuevoCostoG + nuevoCostoH;
-
-            // Crear nodo vecino
-            Nodo* vecinoNodo = new Nodo{nx, ny, nuevoCostoG, nuevoCostoH, nuevoCostoF, actual};
-
-            // Insertar en abierta
-            abierta[abiertaCount++] = vecinoNodo;
-        }
+  while (abiertaCount > 0) {
+    // Buscar menor F
+    int minIndex = 0;
+    for (int j = 1; j < abiertaCount; j++) {
+      if (abierta[j]->costoF < abierta[minIndex]->costoF) {
+        minIndex = j;
+      }
     }
-    Serial.println("No se encontró un camino.");
+    Nodo* actual = abierta[minIndex];
+    abierta[minIndex] = abierta[--abiertaCount];
+
+    // Si se llegó
+    if (actual->x == objetivoX && actual->y == objetivoY) {
+      Serial.println("Camino encontrado:");
+      almacenarInstrucciones(actual);
+      for (int j = pathLength - 1; j >= 0; j--) {
+        Serial.print("(");
+        Serial.print(path[j][0]);
+        Serial.print(", ");
+        Serial.print(path[j][1]);
+        Serial.print(") ");
+      }
+      Serial.println();
+      return;
+    }
+
+    cerrada[actual->x][actual->y] = true;
+
+    uint8_t vecinos[4][2];
+    uint8_t vecinosCount;
+    obtenerVecinos(actual->x, actual->y, vecinos, vecinosCount);
+
+    for (int k = 0; k < vecinosCount; k++) {
+      uint8_t nx = vecinos[k][0];
+      uint8_t ny = vecinos[k][1];
+      if (cerrada[nx][ny]) continue;
+
+      uint8_t nuevoG = actual->costoG + 1;
+      uint8_t nuevoH = heuristica(nx, ny, objetivoX, objetivoY);
+      uint8_t nuevoF = nuevoG + nuevoH;
+
+      Nodo* vecino = new Nodo{nx, ny, nuevoG, nuevoH, nuevoF, actual};
+      abierta[abiertaCount++] = vecino;
+    }
+  }
+  Serial.println("No se encontró un camino.");
+}
+
+extern int __heap_start, *__brkval;
+
+int freeMemory() {
+    int v;
+    return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
 }

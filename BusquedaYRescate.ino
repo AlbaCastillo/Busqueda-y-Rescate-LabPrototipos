@@ -508,9 +508,8 @@ void actualizarPosicion() {
   vermapa();  // Mostrar el mapa actualizado
 }
 
-void actualizarPosObjeto(char objeto) {
+void actualizarOrientacion(int &orientacion){
   // Determinar la orientación actual en función del ángulo acumulado
-  int orientacion;  // 0: Norte, 1: Este, 2: Sur, 3: Oeste  
   
   // Comparar el ángulo acumulado (orientacionActual) para determinar la dirección
   // Permitimos valores negativos para indicar orientación
@@ -523,6 +522,11 @@ void actualizarPosObjeto(char objeto) {
   } else if (abs(orientacionActual - 270) < 15 || abs(orientacionActual + 90) < 15) {
     orientacion = 3; // Oeste
   }
+}
+
+void actualizarPosObjeto(char objeto) {
+  int orientacion;
+  actualizarOrientacion(orientacion);
   Serial.println("Orientacion");
   Serial.println(orientacion);
   Serial.println(orientacionActual);
@@ -616,54 +620,72 @@ void Examinar() {
             // TODO: condiciones para controlar el movimiento segun las coordenadas
 
 
-            //Revisar
-            for (int i = pathLength - 1; i >= 0; i--) {
+            //TODO: Revisar
+            for (int i = pathLength - 2; i >= 0; i--) {
               int nextX = path[i][0];
               int nextY = path[i][1];
+              Serial.print("(");
+              Serial.print(path[i][0]);
+              Serial.print(", ");
+              Serial.print(path[i][1]);
+              Serial.println(") ");
 
               // Move to the next cell
               while (robotX != nextX || robotY != nextY) {
-                medirDistancia();
-                if (distance <= CELDA) {
-                  Serial.println("Encontro un obstaculo en el camino");
-                  actualizarPosObjeto('1'); // Marca un obstáculo en la matriz
-                  AEstrella(robotX, robotY, objetivoX, objetivoY); // Recalcular el camino
-                  break; // Salir del bucle para recalcular el camino
-                }
 
-                if (robotX < nextX) {
-                  if (orientacion != 0) {
-                    while (orientacion != 0) {
-                      right();
-                    }
-                  }
-                  unaCelda();
-                } else if (robotX > nextX) {
-                  if (orientacion != 2) {
-                    while (orientacion != 2) {
-                      right();
-                    }
-                  }
-                  unaCelda();
-                } else if (robotY < nextY) {
-                  if (orientacion != 1) {
-                    while (orientacion != 1) {
-                      right();
-                    }
-                  }
-                  unaCelda();
-                } else if (robotY > nextY) {
-                  if (orientacion != 3) {
-                    while (orientacion != 3) {
-                      right();
-                    }
-                  }
-                  unaCelda();
+              if (robotX < nextX) {
+                Serial.println("robotX < nextX");
+                Serial.println(orientacion);
+                if (orientacion != 0) {
+                while (orientacion != 0) {
+                  right();
+                  actualizarOrientacion(orientacion);
                 }
+                }
+              } else if (robotX > nextX) {
+                Serial.println("robotX > nextX");
+                Serial.println(orientacion);
+                if (orientacion != 2) {
+                while (orientacion != 2) {
+                  left();
+                  actualizarOrientacion(orientacion);
+                }
+                }
+              } else if (robotY < nextY) {
+                Serial.println("robotY 1");
+                if (orientacion != 1) {
+                while (orientacion != 1) {
+                  Serial.println(orientacion);
+                  left();
+                  actualizarOrientacion(orientacion);
+                }
+                }
+              } else if (robotY > nextY) {
+                Serial.println("robotY 2");
+                Serial.println(orientacion);
+                if (orientacion != 3) {
+                while (orientacion != 3) {
+                  right();
+                  actualizarOrientacion(orientacion);
+                }
+                }
+              }
+
+              // Check for obstacles before moving
+              medirDistancia();
+              if (distance <= CELDA) {
+                Serial.println("Encontro un obstaculo en el camino");
+                actualizarPosObjeto('1'); // Marca un obstáculo en la matriz
+                AEstrella(robotX, robotY, objetivoX, objetivoY); // Recalcular el camino
+                break; // Salir del bucle para recalcular el camino
+              } else {
+                unaCelda();
+              }
               }
             }
 
             // Hasta aqui 
+            Serial.println("Salio del for");
             left();
         }
         if (orientacion==1){
