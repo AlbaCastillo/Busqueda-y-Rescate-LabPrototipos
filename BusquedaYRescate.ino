@@ -620,73 +620,45 @@ void Examinar() {
             // TODO: condiciones para controlar el movimiento segun las coordenadas
 
 
-            //TODO: Revisar
-            for (int i = pathLength - 2; i >= 0; i--) {
-              int nextX = path[i][0];
-              int nextY = path[i][1];
-              Serial.print("(");
-              Serial.print(path[i][0]);
-              Serial.print(", ");
-              Serial.print(path[i][1]);
-              Serial.println(") ");
-
-              // Move to the next cell
-              while (robotX != nextX || robotY != nextY) {
-
-              if (robotX < nextX) {
-                Serial.println("robotX < nextX");
-                Serial.println(orientacion);
-                if (orientacion != 0) {
-                while (orientacion != 0) {
-                  right();
-                  actualizarOrientacion(orientacion);
-                }
-                }
-              } else if (robotX > nextX) {
-                Serial.println("robotX > nextX");
-                Serial.println(orientacion);
-                if (orientacion != 2) {
-                while (orientacion != 2) {
-                  left();
-                  actualizarOrientacion(orientacion);
-                }
-                }
-              } else if (robotY < nextY) {
-                Serial.println("robotY 1");
-                if (orientacion != 1) {
-                while (orientacion != 1) {
-                  Serial.println(orientacion);
-                  left();
-                  actualizarOrientacion(orientacion);
-                }
-                }
-              } else if (robotY > nextY) {
-                Serial.println("robotY 2");
-                Serial.println(orientacion);
-                if (orientacion != 3) {
-                while (orientacion != 3) {
-                  right();
-                  actualizarOrientacion(orientacion);
-                }
-                }
-              }
-
-              // Check for obstacles before moving
-              medirDistancia();
-              if (distance <= CELDA) {
-                Serial.println("Encontro un obstaculo en el camino");
-                actualizarPosObjeto('1'); // Marca un obstáculo en la matriz
-                AEstrella(robotX, robotY, objetivoX, objetivoY); // Recalcular el camino
-                break; // Salir del bucle para recalcular el camino
-              } else {
-                unaCelda();
-              }
-              }
-            }
+            //Loop para seguir el camino dado por A*
+            followsAEstrella(path);
 
             // Hasta aqui 
             Serial.println("Salio del for");
-            left();
+            //left();
+
+            if (robotX == 0 && robotY == 0) {
+              // Already at (0,0)
+              Serial.println("Robot already at (0,0)");
+            } else if (robotX == 0) {
+              // Robot is in the first row, turn towards (0,0)
+              if (orientacion != 3) {
+              while (orientacion != 3) {
+                left();
+                actualizarOrientacion(orientacion);
+              }
+              }
+            } else if (robotY == 0) {
+              // Robot is in the first column, turn towards (0,0)
+              if (orientacion != 2) {
+              while (orientacion != 2) {
+                right();
+                actualizarOrientacion(orientacion);
+              }
+              }
+            } else {
+              // Robot is neither in the first row nor the first column
+              if (orientacion != 2) {
+              while (orientacion != 2) {
+                left();
+                actualizarOrientacion(orientacion);
+              }
+              }
+            }
+            
+            while(robotX != 0 || robotY != 0) {
+              unaCelda();
+            }
         }
         if (orientacion==1){
             objetivoX = robotX;
@@ -736,6 +708,74 @@ void Examinar() {
     motord.run(FORWARD);
     delay(5);
     medirDistancia();
+  }
+}
+
+void followsAEstrella(int path[][2]){
+  //TODO: Pasar el codigo ya funcional que sigue el camino de A* como funcion para usarlo en todas las posibilidades
+  //Recibe Coordenas y camino a seguir
+
+  for (int i = pathLength - 2; i >= 0; i--) {
+    int nextX = path[i][0];
+    int nextY = path[i][1];
+    Serial.print("(");
+    Serial.print(path[i][0]);
+    Serial.print(", ");
+    Serial.print(path[i][1]);
+    Serial.println(") ");
+
+    // Move to the next cell
+    while (robotX != nextX || robotY != nextY) {
+
+    if (robotX < nextX) {
+      Serial.println("robotX < nextX");
+      Serial.println(orientacion);
+      if (orientacion != 0) {
+      while (orientacion != 0) {
+        right();
+        actualizarOrientacion(orientacion);
+      }
+      }
+    } else if (robotX > nextX) {
+      Serial.println("robotX > nextX");
+      Serial.println(orientacion);
+      if (orientacion != 2) {
+      while (orientacion != 2) {
+        left();
+        actualizarOrientacion(orientacion);
+      }
+      }
+    } else if (robotY < nextY) {
+      Serial.println("robotY 1");
+      if (orientacion != 1) {
+      while (orientacion != 1) {
+        Serial.println(orientacion);
+        left();
+        actualizarOrientacion(orientacion);
+      }
+      }
+    } else if (robotY > nextY) {
+      Serial.println("robotY 2");
+      Serial.println(orientacion);
+      if (orientacion != 3) {
+      while (orientacion != 3) {
+        right();
+        actualizarOrientacion(orientacion);
+      }
+      }
+    }
+
+    // Check for obstacles before moving
+    medirDistancia();
+    if (distance <= CELDA) {
+      Serial.println("Encontro un obstaculo en el camino");
+      actualizarPosObjeto('1'); // Marca un obstáculo en la matriz
+      AEstrella(robotX, robotY, objetivoX, objetivoY); // Recalcular el camino
+      break; // Salir del bucle para recalcular el camino
+    } else {
+      unaCelda();
+    }
+    }
   }
 }
 
