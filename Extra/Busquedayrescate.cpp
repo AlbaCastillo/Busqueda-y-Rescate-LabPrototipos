@@ -646,7 +646,15 @@ void Examinar() {
                 actualizarOrientacion(orientacion);
               }
               }
-            } else {
+            } else if(robotx == MAP_SIZE-1){
+              // Robot is in the last row, turn towards (0,0)
+              if (orientacion != 0) {
+              while (orientacion != 0) {
+                right();
+                actualizarOrientacion(orientacion);
+              }
+              }
+            }  else {
               // Robot is neither in the first row nor the first column
               if (orientacion != 2) {
               while (orientacion != 2) {

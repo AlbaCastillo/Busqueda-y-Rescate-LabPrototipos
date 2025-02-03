@@ -588,12 +588,21 @@ void Examinar() {
   //Avanzo
   Serial.print("Avanzo: cm");
   Serial.println(posX);
+
   // Detener motores
   motori.run(RELEASE);
   motord.run(RELEASE);
 
   // Leer los sensores infrarrojos
   qtr.read(sensorValues);
+
+  // Regresar lo que avanzo para acercarse
+  // while (distance < distanceInicial ) {  // Retrocede hasta que vuelva a la posición inicial
+  //   motori.run(FORWARD);
+  //   motord.run(FORWARD);
+  //   delay(5);
+  //   medirDistancia();
+  // }
   
   if (sensorValues[0] < 800 || sensorValues[1] < 800) {
     Serial.println("Objeto Blanco detectado."); 
@@ -624,7 +633,7 @@ void Examinar() {
             followsAEstrella(path);
 
             // Hasta aqui 
-            Serial.println("Salio del for");
+            Serial.println("Salio del followsAEstrella");
             //left();
 
             if (robotX == 0 && robotY == 0) {
@@ -646,7 +655,15 @@ void Examinar() {
                 actualizarOrientacion(orientacion);
               }
               }
-            } else {
+            } else if(robotX == MAP_SIZE-1){
+              // Robot is in the last row, turn towards (0,0)
+              if (orientacion != 3) {
+              while (orientacion != 3) {
+                right();
+                actualizarOrientacion(orientacion);
+              }
+              }
+            }  else {
               // Robot is neither in the first row nor the first column
               if (orientacion != 2) {
               while (orientacion != 2) {
@@ -656,32 +673,57 @@ void Examinar() {
               }
             }
             
-            while(robotX != 0 || robotY != 0) {
+            while(robotX != 0 && robotY != 0) {
               unaCelda();
             }
+
         }
         if (orientacion==1){
             objetivoX = robotX;
             objetivoY = robotY + 2;
             AEstrella(robotX, robotY, objetivoX, objetivoY);
-            left();
+            //Loop para seguir el camino dado por A*
+            followsAEstrella(path);
+
+            Serial.println("Salio del followsAEstrella");
+
+            turnGoal();
+
+            while(robotX != 0 && robotY != 0) {
+              unaCelda();
+            }
+
+            //left();
         }
+
     } else {
         // Acción para columnas impares (Robot de frente a la meta - solo debe avanzar)
         Serial.println("Columna impar Blanco");
         // Empujar hasta llegar a la coordenda x = 0  o  y = 0
-        if (orientacion==2){
-            objetivoX = 0;
-            objetivoY = robotY;
-            AEstrella(robotX, robotY, objetivoX, objetivoY);
 
+        while(robotX != 0 && robotY != 0) {
+          unaCelda();
         }
-        if (orientacion==3){
-            objetivoX = robotX;
-            objetivoY = 0;
-            AEstrella(robotX, robotY, objetivoX, objetivoY);
+        //TODO: Deberia revisar si esta libre la via antes de empujar
+        // if (orientacion==2){
+        //     Serial.println("orientacion==2");
+        //     //objetivoX = 0;
+        //     //objetivoY = robotY;
+        //     //AEstrella(robotX, robotY, objetivoX, objetivoY);
 
-        }
+        //     while(robotX != 0 || robotY != 0) {
+        //       unaCelda();
+        //     }
+        // }
+        // if (orientacion==3){
+        //     // objetivoX = robotX;
+        //     // objetivoY = 0;
+        //     // AEstrella(robotX, robotY, objetivoX, objetivoY);
+
+        //     while(robotX != 0 || robotY != 0) {
+        //       unaCelda();
+        //     }
+        // }
     }
 
     Obst = true;
@@ -695,20 +737,81 @@ void Examinar() {
         Serial.println("Columna par");
         //TODO completar codigo
 
+        if (orientacion==0){
+          objetivoX = robotX + 2;
+          objetivoY = robotY;
+
+          AEstrella(robotX, robotY, objetivoX, objetivoY);
+
+          //Loop para seguir el camino dado por A*
+          followsAEstrella(path);
+          Serial.println("Salio del followsAEstrella");
+
+          if (orientacion != 0) {
+            while (orientacion != 0) {
+              left();
+              actualizarOrientacion(orientacion);
+            }
+          }
+        }
+        if (orientacion==1){
+          objetivoX = robotX - 1;
+          objetivoY = robotY + 1;
+          AEstrella(robotX, robotY, objetivoX, objetivoY);
+
+          //Loop para seguir el camino dado por A*
+          followsAEstrella(path);
+          Serial.println("Salio del followsAEstrella");
+
+          if (orientacion != 2) {
+            while (orientacion != 2) {
+              left();
+              actualizarOrientacion(orientacion);
+            }
+          }
+        }
+       
     } else {
         // Acción para columnas impares (Rodear obstaculo)
         Serial.println("Columna impar");
 
+        if (orientacion==2){
+          objetivoX = robotX - 2;
+          objetivoY = robotY;
+
+          AEstrella(robotX, robotY, objetivoX, objetivoY);
+
+          //Loop para seguir el camino dado por A*
+          followsAEstrella(path);
+          Serial.println("Salio del followsAEstrella");
+
+          if (orientacion != 2) {
+            while (orientacion != 2) {
+              right();
+              actualizarOrientacion(orientacion);
+            }
+          }
+        }
+        if (orientacion==1){
+          objetivoX = robotX + 1;
+          objetivoY = robotY + 1;
+          AEstrella(robotX, robotY, objetivoX, objetivoY);
+
+          //Loop para seguir el camino dado por A*
+          followsAEstrella(path);
+          Serial.println("Salio del followsAEstrella");
+
+          if (orientacion != 0) {
+            while (orientacion != 0) {
+              right();
+              actualizarOrientacion(orientacion);
+            }
+          }
+        }
+
     }
   }
   
-  // Regresar lo que avanzo para acercarse
-  while (distance < distanceInicial ) {  // Retrocede hasta que vuelva a la posición inicial
-    motori.run(FORWARD);
-    motord.run(FORWARD);
-    delay(5);
-    medirDistancia();
-  }
 }
 
 void followsAEstrella(int path[][2]){
@@ -774,6 +877,46 @@ void followsAEstrella(int path[][2]){
       break; // Salir del bucle para recalcular el camino
     } else {
       unaCelda();
+    }
+    }
+  }
+}
+
+void turnGoal(){
+  //Decide a donde girar para ir a la meta
+  if (robotX == 0 && robotY == 0) {
+    // Already at (0,0)
+    Serial.println("Robot already at (0,0)");
+  } else if (robotX == 0) {
+    // Robot is in the first row, turn towards (0,0)
+    if (orientacion != 3) {
+    while (orientacion != 3) {
+      left();
+      actualizarOrientacion(orientacion);
+    }
+    }
+  } else if (robotY == 0) {
+    // Robot is in the first column, turn towards (0,0)
+    if (orientacion != 2) {
+    while (orientacion != 2) {
+      right();
+      actualizarOrientacion(orientacion);
+    }
+    }
+  } else if(robotX == MAP_SIZE-1){
+    // Robot is in the last row, turn towards (0,0)
+    if (orientacion != 0) {
+    while (orientacion != 0) {
+      right();
+      actualizarOrientacion(orientacion);
+    }
+    }
+  }  else {
+    // Robot is neither in the first row nor the first column
+    if (orientacion != 2) {
+    while (orientacion != 2) {
+      left();
+      actualizarOrientacion(orientacion);
     }
     }
   }
