@@ -3,7 +3,7 @@
 #include <stdio.h>
 #define MAP_SIZE 4  // Tamaño del mapa (ajustar según la resolución y entorno)
 //const int MAP_SIZE = MAP_SIZE_one;
-const float CELDA = 15;  // = (Tamaño/2) Tamaño de la celda en centimetros (ejm 20cm*20cm) (ajustar según el tamaño del robot)
+const float CELDA = 30;  // = (Tamaño/2) Tamaño de la celda en centimetros (ejm 20cm*20cm) (ajustar según el tamaño del robot)
 char mapa[MAP_SIZE][MAP_SIZE];  // Matriz del mapa de ocupación
 int robotX, robotY;            // Posición actual del robot en el mapa
 int inicioX, inicioY;          // Posición inicial (punto de origen)
@@ -580,11 +580,11 @@ void Examinar() {
   posX = 0; // Reiniciar distancia acumulada en X
   lastTime = millis(); // Reset the time
   distanceInicial = distance;
-  while (distance > 5){
-    go();
-    medirDistancia();
-    updateAccel();
-  }
+  // while (distance > 5){
+  //   go();
+  //   medirDistancia();
+  //   updateAccel();
+  // }
   //Avanzo
   Serial.print("Avanzo: cm");
   Serial.println(posX);
@@ -620,6 +620,11 @@ void Examinar() {
         if (orientacion==0){
             objetivoX = robotX + 2;
             objetivoY = robotY;
+
+            if (robotX == MAP_SIZE-2){
+              objetivoX = robotX + 1;
+              objetivoY = robotY + 1;
+            }
 
             Serial.print("Free Memory: ");
             Serial.println(freeMemory());
@@ -673,10 +678,22 @@ void Examinar() {
               }
             }
             
-            while(robotX != 0 && robotY != 0) {
-              unaCelda();
+            if (orientacion == 2){
+              while (robotX != 0) {
+                unaCelda();
+              }
+            } else {
+              while (robotY != 0) {
+                unaCelda();
+              }
             }
-
+            
+            Serial.println("Entrego el objeto");
+            //Gira 180 grados para retomar la exploracion en zigzag
+            uturn();
+            avanzo = 0;
+            //Volver a zigzag
+            return; // Salir del bucle para volver al zigzag
         }
         if (orientacion==1){
             objetivoX = robotX;
@@ -689,11 +706,22 @@ void Examinar() {
 
             turnGoal();
 
-            while(robotX != 0 && robotY != 0) {
-              unaCelda();
+            if (orientacion == 2){
+              while (robotX != 0) {
+                unaCelda();
+              }
+            } else {
+              while (robotY != 0) {
+                unaCelda();
+              }
             }
-
-            //left();
+            
+            Serial.println("Entrego el objeto");
+            //Gira 180 grados para retomar la exploracion en zigzag
+            uturn();
+            avanzo = 0;
+            //Volver a zigzag
+            return; // Salir del bucle para volver al zigzag
         }
 
     } else {
@@ -704,6 +732,15 @@ void Examinar() {
         while(robotX != 0 && robotY != 0) {
           unaCelda();
         }
+
+        Serial.println("Entrego el objeto");
+
+        //Gira 180 grados para retomar la exploracion en zigzag
+        uturn();
+        avanzo = 0;
+        //Volver a zigzag
+        return;
+
         //TODO: Deberia revisar si esta libre la via antes de empujar
         // if (orientacion==2){
         //     Serial.println("orientacion==2");
@@ -726,11 +763,11 @@ void Examinar() {
         // }
     }
 
-    Obst = true;
+    //Obst = true;
   } else if (sensorValues[0] > 800 && sensorValues[1] > 800) {
     Serial.println("Obstáculo detectado.");
     actualizarPosObjeto('1'); // Marca un obstáculo en la matriz
-    Obst = true;
+    //Obst = true;
 
     if ((robotY % 2) == 0) {
         // Acción para columnas pares (Rodear obstaculo)
@@ -740,6 +777,11 @@ void Examinar() {
         if (orientacion==0){
           objetivoX = robotX + 2;
           objetivoY = robotY;
+
+          if (robotX == MAP_SIZE-2){
+              objetivoX = robotX + 1;
+              objetivoY = robotY + 1;
+            }
 
           AEstrella(robotX, robotY, objetivoX, objetivoY);
 
@@ -815,7 +857,6 @@ void Examinar() {
 }
 
 void followsAEstrella(int path[][2]){
-  //TODO: Pasar el codigo ya funcional que sigue el camino de A* como funcion para usarlo en todas las posibilidades
   //Recibe Coordenas y camino a seguir
 
   for (int i = pathLength - 2; i >= 0; i--) {
@@ -905,8 +946,8 @@ void turnGoal(){
     }
   } else if(robotX == MAP_SIZE-1){
     // Robot is in the last row, turn towards (0,0)
-    if (orientacion != 0) {
-    while (orientacion != 0) {
+    if (orientacion != 3) {
+    while (orientacion != 3) {
       right();
       actualizarOrientacion(orientacion);
     }
