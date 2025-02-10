@@ -946,8 +946,8 @@ void turnGoal(){
     }
   } else if(robotX == MAP_SIZE-1){
     // Robot is in the last row, turn towards (0,0)
-    if (orientacion != 0) {
-    while (orientacion != 0) {
+    if (orientacion != 3) {
+    while (orientacion != 3s) {
       right();
       actualizarOrientacion(orientacion);
     }
