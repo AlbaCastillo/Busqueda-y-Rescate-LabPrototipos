@@ -3,7 +3,7 @@
 #include <stdio.h>
 #define MAP_SIZE 4  // Tamaño del mapa (ajustar según la resolución y entorno)
 //const int MAP_SIZE = MAP_SIZE_one;
-const float CELDA = 15;  // = (Tamaño/2) Tamaño de la celda en centimetros (ejm 20cm*20cm) (ajustar según el tamaño del robot)
+const float CELDA = 50;  // = (Tamaño/2) Tamaño de la celda en centimetros (ejm 20cm*20cm) (ajustar según el tamaño del robot)
 char mapa[MAP_SIZE][MAP_SIZE];  // Matriz del mapa de ocupación
 int robotX, robotY;            // Posición actual del robot en el mapa
 int inicioX, inicioY;          // Posición inicial (punto de origen)
@@ -817,6 +817,12 @@ void Examinar() {
         // Acción para columnas impares (Rodear obstaculo)
         Serial.println("Columna impar");
 
+        Serial.print("Free Memory: ");
+        Serial.println(freeMemory());
+        Serial.print("Orientacion: ");
+        Serial.println(orientacion);
+
+        //TODO no esta entrando a ninguno de estos ifs
         if (orientacion==2){
           objetivoX = robotX - 2;
           objetivoY = robotY;
@@ -834,7 +840,7 @@ void Examinar() {
             }
           }
         }
-        if (orientacion==1){
+        if (orientacion == 1){
           objetivoX = robotX + 1;
           objetivoY = robotY + 1;
           AEstrella(robotX, robotY, objetivoX, objetivoY);
@@ -947,7 +953,7 @@ void turnGoal(){
   } else if(robotX == MAP_SIZE-1){
     // Robot is in the last row, turn towards (0,0)
     if (orientacion != 3) {
-    while (orientacion != 3s) {
+    while (orientacion != 3) {
       right();
       actualizarOrientacion(orientacion);
     }
