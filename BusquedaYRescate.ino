@@ -3,7 +3,8 @@
 #include <stdio.h>
 #define MAP_SIZE 4  // Tamaño del mapa (ajustar según la resolución y entorno)
 //const int MAP_SIZE = MAP_SIZE_one;
-const float CELDA = 50;  // = (Tamaño/2) Tamaño de la celda en centimetros (ejm 20cm*20cm) (ajustar según el tamaño del robot)
+const float CELDA = 150;  // = (Tamaño/2) Tamaño de la celda en centimetros (ejm 20cm*20cm) (ajustar según el tamaño del robot)
+const float Obs = 10;
 char mapa[MAP_SIZE][MAP_SIZE];  // Matriz del mapa de ocupación
 int robotX, robotY;            // Posición actual del robot en el mapa
 int inicioX, inicioY;          // Posición inicial (punto de origen)
@@ -917,7 +918,7 @@ void followsAEstrella(int path[][2]){
 
     // Check for obstacles before moving
     medirDistancia();
-    if (distance <= CELDA) {
+    if (distance <= Obs) {
       Serial.println("Encontro un obstaculo en el camino");
       actualizarPosObjeto('1'); // Marca un obstáculo en la matriz
       AEstrella(robotX, robotY, objetivoX, objetivoY); // Recalcular el camino
@@ -976,13 +977,13 @@ void busquedaZigZag() {
 
   if(robotX == MAP_SIZE-1){
     left();
-    if (distance > CELDA){
+    if (distance > Obs){
       unaCelda();
       left();
-      if (distance > CELDA){
+      if (distance > Obs){
         unaCelda();}
     }
-    else if (distance <= CELDA){
+    else if (distance <= Obs){
       stop();
       Serial.println("Encontro un obstaculo");
       Examinar();
@@ -990,25 +991,25 @@ void busquedaZigZag() {
   }
   else if(robotX == 0 && avanzo == 1){
     right();
-    if (distance > CELDA){
+    if (distance > Obs){
       unaCelda();
       right();
-      if (distance > CELDA){
+      if (distance > Obs){
         unaCelda();}
     }
-    else if (distance <= CELDA){
+    else if (distance <= Obs){
       stop();
       Serial.println("Encontro un obstaculo");
       Examinar();
     }
   }
-  else if(distance <= CELDA){
+  else if(distance <= Obs){
     stop();
     Serial.println("Encontro un obstaculo");
     Examinar();
 
   }
-  else if (distance > CELDA){
+  else if (distance > Obs){
     Serial.println("Siga derecho");
     unaCelda();
   }
