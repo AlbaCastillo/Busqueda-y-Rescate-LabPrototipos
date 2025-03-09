@@ -77,7 +77,7 @@ float posY = 0;
 
 // Calibration offsets
 float accelOffsetX = 0, accelOffsetY = 0, accelOffsetZ = 0;
-float gyroOffsetX = 0, gyroOffsetY = 0, gyroOffsetZ = 0 ;
+float gyroOffsetX = 0, gyroOffsetY = 0, gyroOffsetZ = 2;
 
 // Moving Average Filter
 #define FILTER_SIZE 5  // Número de muestras para el promedio
@@ -388,14 +388,14 @@ void updateGyro() {
   deltaTime = (currentTime - lastTime) / 1000.0;
   lastTime = currentTime;
 
-  float gyroZ = (g.gyro.z - gyroOffsetZ) * (180 / PI); // rad/s a deg/s
-  angle += gyroZ * deltaTime;
-  Serial.print("Angulo sin filtro:");
-  Serial.println(angle);
+  float gyroZ = (g.gyro.z ) * (180 / PI); // rad/s a deg/s
+  // angle += gyroZ * deltaTime;
+  // Serial.print("Angulo sin filtro:");
+  // Serial.println(angle);
 
   float filteredGyroZ = filterMovingAverage(gyroZ);
   // Actualizar ángulo usando la señal filtrada
-  angle += filteredGyroZ * deltaTime;
+  angle += filteredGyroZ * deltaTime * gyroOffsetZ ;
   Serial.print("Angulo con filtro:");
   Serial.println(angle);
 
